@@ -112,6 +112,19 @@ func NewWindow(width, height int) *Window {
 	return w
 }
 
+func (w *Window) UseAsync() {
+	w.set = w.setAsync
+}
+
+func (w *Window) UseSync() {
+	w.set = w.setSync
+}
+
+// Sync syncs the window to the internal buffer.
+func (w *Window) Sync() {
+	C.update_window(&w.ctx)
+}
+
 func (w *Window) setAsync(x, y int, c color.Color) {
 	w.RGBA.Set(x, y, c)
 }
