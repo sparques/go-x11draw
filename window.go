@@ -1,4 +1,31 @@
-package x11draw
+package x11draw // import "github.com/sparques/go-x11draw"
+/*
+x11draw is a very simple way to get a draw.Draw interface the is displayed in an X11 window.
+
+Its only dependency is CGO and X11--no need for OpenGL, SDL, or some complicated build tool chain.
+
+Example below opens a window and then writes random colored pixels in random locations.
+
+	// Open an X11 window
+	win := x11draw.NewWindow(800, 600)
+	// We automatically write changes to the window by default.
+	// If we wanted to manually have to sync updates we could uncomment below
+	// and then call win.Sync() to write the update to screen.
+	// win.UseAsync()
+
+	go func() {
+		for {
+			time.Sleep(time.Second/10)
+			win.Set(rand.Intn(win.Bounds().Dx()),
+			 	rand.Intn(win.Bounds().Dy()), color.RGBA{uint8(rand.Intn(255)), uint8(rand.Intn(255)), uint8(rand.Intn(255)), 255})
+		}
+	}()
+
+	for {
+		win.NextEvent()
+		// win.Sync() // do update
+	}
+*/
 
 /*
 #cgo LDFLAGS: -lX11
@@ -93,12 +120,15 @@ import (
 	"unsafe"
 )
 
+// Window implements draw.Draw (and image.Draw). Writes to it show up on screen.
 type Window struct {
 	*image.RGBA
 	ctx C.X11Context
 	set func(x, y int, c color.Color)
 }
 
+// NewWindow creates and attempts to open a new X11 window. A backing buffer in the form of a
+// image.RGBA of the same size is also created.
 func NewWindow(width, height int) *Window {
 	buf := image.NewRGBA(image.Rect(0, 0, width, height))
 	ctx := C.X11Context{}
@@ -112,10 +142,12 @@ func NewWindow(width, height int) *Window {
 	return w
 }
 
+// UseAsync makes it so calls to (*Window).Set do not cause the X11 window to be updated.
 func (w *Window) UseAsync() {
 	w.set = w.setAsync
 }
 
+// UseSync makes it so calls to (*Window).Set cause the X11 window to be updated.
 func (w *Window) UseSync() {
 	w.set = w.setSync
 }
@@ -134,15 +166,19 @@ func (w *Window) setSync(x, y int, c color.Color) {
 	C.update_window(&w.ctx)
 }
 
+// Set implements draw.Draw interface.
 func (w *Window) Set(x, y int, c color.Color) {
 	w.set(x, y, c)
 }
 
+// NextEvent returns the next xlib event. This is a blocking call.
 func (w *Window) NextEvent() (event C.XEvent) {
 	C.XNextEvent(w.ctx.display, &event)
 	return
 }
 
+// Close closes the window. Image operations may still happen, but you cannot get the window back.
+// Calling Sync or using Sync will cause a panic.
 func (w *Window) Close() {
 	C.destroy_window(&w.ctx)
 }
