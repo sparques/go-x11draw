@@ -44,10 +44,14 @@ typedef struct {
     int height;
 } X11Context;
 
-void create_window(X11Context *ctx, int width, int height, uint32_t *data) {
-	ctx->width=width;
-	ctx->height=height;
+void change_image(X11Context *ctx, uint32_t *data, int width, int height) {
+	ctx->width = width;
+	ctx->height = height;
+	ctx->image = XCreateImage(ctx->display, DefaultVisual(ctx->display, 0), 24, ZPixmap, 0,
+                                  (char *)data, width, height, 32, 0);
+}
 
+void create_window(X11Context *ctx, int width, int height, uint32_t *data) {
     ctx->display = XOpenDisplay(NULL);
     if (ctx->display == NULL) {
         fprintf(stderr, "Cannot open display\n");
@@ -58,12 +62,11 @@ void create_window(X11Context *ctx, int width, int height, uint32_t *data) {
     ctx->window = XCreateSimpleWindow(ctx->display, RootWindow(ctx->display, screen), 10, 10, width, height, 1,
                                        BlackPixel(ctx->display, screen), WhitePixel(ctx->display, screen));
 
-    XSelectInput(ctx->display, ctx->window, ExposureMask | KeyPressMask);
+    XSelectInput(ctx->display, ctx->window, ExposureMask | KeyPressMask | KeyReleaseMask);
     XMapWindow(ctx->display, ctx->window);
     ctx->gc = XCreateGC(ctx->display, ctx->window, 0, NULL);
 
-    ctx->image = XCreateImage(ctx->display, DefaultVisual(ctx->display, 0), 24, ZPixmap, 0,
-                                  (char *)data, width, height, 32, 0);
+	change_image(ctx, data, width, height);
 }
 
 void destroy_window(X11Context *ctx) {
@@ -140,6 +143,11 @@ func NewWindow(width, height int) *Window {
 	}
 	w.set = w.setSync
 	return w
+}
+
+func (w *Window) UseImage(img *image.RGBA) {
+	w.RGBA = img
+	C.change_image(&w.ctx, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), C.int(img.Bounds().Dx()), C.int(img.Bounds().Dy()))
 }
 
 // UseAsync makes it so calls to (*Window).Set do not cause the X11 window to be updated.
