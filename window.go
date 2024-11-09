@@ -125,7 +125,8 @@ import (
 
 // Window implements draw.Draw (and image.Draw). Writes to it show up on screen.
 type Window struct {
-	*image.RGBA
+	//*image.RGBA
+	*BGRA
 	ctx C.X11Context
 	set func(x, y int, c color.Color)
 }
@@ -133,20 +134,21 @@ type Window struct {
 // NewWindow creates and attempts to open a new X11 window. A backing buffer in the form of a
 // image.RGBA of the same size is also created.
 func NewWindow(width, height int) *Window {
-	buf := image.NewRGBA(image.Rect(0, 0, width, height))
+	// buf := image.NewRGBA(image.Rect(0, 0, width, height))
+	buf := NewBGRA(image.Rect(0, 0, width, height))
 	ctx := C.X11Context{}
 	C.create_window(&ctx, C.int(width), C.int(height), (*C.uint32_t)(unsafe.Pointer(&buf.Pix[0])))
 	C.wait_expose(&ctx)
 	w := &Window{
-		RGBA: buf,
+		BGRA: buf,
 		ctx:  ctx,
 	}
 	w.set = w.setSync
 	return w
 }
 
-func (w *Window) UseImage(img *image.RGBA) {
-	w.RGBA = img
+func (w *Window) UseImage(img *BGRA) {
+	w.BGRA = img
 	C.change_image(&w.ctx, (*C.uint32_t)(unsafe.Pointer(&img.Pix[0])), C.int(img.Bounds().Dx()), C.int(img.Bounds().Dy()))
 }
 
@@ -166,11 +168,11 @@ func (w *Window) Sync() {
 }
 
 func (w *Window) setAsync(x, y int, c color.Color) {
-	w.RGBA.Set(x, y, c)
+	w.BGRA.Set(x, y, c)
 }
 
 func (w *Window) setSync(x, y int, c color.Color) {
-	w.RGBA.Set(x, y, c)
+	w.BGRA.Set(x, y, c)
 	C.update_window(&w.ctx)
 }
 
