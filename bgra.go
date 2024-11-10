@@ -164,3 +164,51 @@ func NewBGRA(r image.Rectangle) *BGRA {
 		Rect:   r,
 	}
 }
+
+// Scroll implements gfx.Scroller
+func (p *BGRA) Scroll(amount int) {
+	switch {
+	case amount == 0:
+		return
+	case amount > 0:
+		if amount > p.Rect.Dy() {
+			amount = p.Rect.Dy()
+		}
+		copy(p.Pix, p.Pix[p.Stride*amount:])
+	case amount < 0:
+		if amount < -p.Rect.Dy() {
+			amount = -p.Rect.Dy()
+		}
+		reverseCopy(p.Pix[p.Stride*amount:], p.Pix[:len(p.Pix)-p.Stride*amount])
+	}
+}
+
+// Fill implements gfx.Filler. Whereever BGRA overlaps with 'where', set those
+// pixels to color c.
+func (p *BGRA) Fill(where image.Rectangle, c color.Color) {
+	// get c as native color
+	nc := bgraModel(c).(BGRAColor)
+
+	where = p.Bounds().Intersect(where)
+
+	if where.Empty() {
+		return
+	}
+
+	pixLine := make([]uint8, 4*where.Bounds().Dx())
+	for i := 0; i <= where.Bounds().Dx(); i++ {
+		copy(pixLine[i:i+4:i+4], []uint8{nc.B, nc.G, nc.R, nc.A})
+	}
+
+	// first try a naïve for loop--we'll optimize later
+	for y := where.Min.Y; y < where.Max.Y; y++ {
+		i := p.PixOffset(where.Bounds().Min.X, y)
+		copy(p.Pix[i:i+len(pixLine):i+len(pixLine)], pixLine)
+	}
+}
+
+func reverseCopy[E any](dst, src []E) {
+	for i := len(src) - 1; i >= 0; i-- {
+		dst[i] = src[i]
+	}
+}
