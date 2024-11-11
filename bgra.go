@@ -176,10 +176,38 @@ func (p *BGRA) Scroll(amount int) {
 		}
 		copy(p.Pix, p.Pix[p.Stride*amount:])
 	case amount < 0:
-		if amount < -p.Rect.Dy() {
-			amount = -p.Rect.Dy()
+		amount *= -1
+		if amount > p.Rect.Dy() {
+			amount = p.Rect.Dy()
 		}
 		reverseCopy(p.Pix[p.Stride*amount:], p.Pix[:len(p.Pix)-p.Stride*amount])
+	}
+}
+
+func (p *BGRA) RegionScroll(region image.Rectangle, amount int) {
+	region = p.Rect.Intersect(region)
+	if region.Empty() || amount == 0 {
+		return
+	}
+	// if amount is positive or negative, copy lines forwards or backwards
+
+	var start, end int
+	if amount > 0 {
+		for y := region.Min.Y; y < (region.Max.Y - amount); y++ {
+			start = p.Stride*y + region.Min.X*4
+			end = p.Stride*y + region.Max.X*4
+
+			copy(p.Pix[start:end], p.Pix[start+amount*p.Stride:end+amount*p.Stride])
+		}
+		return
+	}
+
+	// negative scrolling (scrolling up)
+	for y := region.Max.Y; y > (region.Min.Y - amount); y-- {
+		start = p.Stride*y + region.Min.X*4
+		end = p.Stride*y + region.Max.X*4
+
+		copy(p.Pix[start:end], p.Pix[start+amount*p.Stride:end+amount*p.Stride])
 	}
 }
 
