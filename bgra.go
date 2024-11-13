@@ -203,7 +203,7 @@ func (p *BGRA) RegionScroll(region image.Rectangle, amount int) {
 	}
 
 	// negative scrolling (scrolling up)
-	for y := region.Max.Y; y > (region.Min.Y - amount); y-- {
+	for y := region.Max.Y - 1; y >= (region.Min.Y - amount); y-- {
 		start = p.Stride*y + region.Min.X*4
 		end = p.Stride*y + region.Max.X*4
 
@@ -211,7 +211,7 @@ func (p *BGRA) RegionScroll(region image.Rectangle, amount int) {
 	}
 }
 
-// Fill implements gfx.Filler. Whereever BGRA overlaps with 'where', set those
+// Fill implements gfx.Filler. Whereever p overlaps with 'where', set those
 // pixels to color c.
 func (p *BGRA) Fill(where image.Rectangle, c color.Color) {
 	// get c as native color
