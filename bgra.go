@@ -225,7 +225,7 @@ func (p *BGRA) Fill(where image.Rectangle, c color.Color) {
 
 	pixLine := make([]uint8, 4*where.Bounds().Dx())
 	for i := 0; i <= where.Bounds().Dx(); i++ {
-		copy(pixLine[i:i+4:i+4], []uint8{nc.B, nc.G, nc.R, nc.A})
+		copy(pixLine[i*4:], []uint8{nc.B, nc.G, nc.R, nc.A})
 	}
 
 	// first try a naïve for loop--we'll optimize later
