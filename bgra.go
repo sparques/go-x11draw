@@ -77,6 +77,8 @@ func (p *BGRA) RGBAAt(x, y int) color.RGBA {
 
 // PixOffset returns the index of the first element of Pix that corresponds to
 // the pixel at (x, y).
+//
+//go:inline
 func (p *BGRA) PixOffset(x, y int) int {
 	return (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*4
 }
@@ -211,6 +213,71 @@ func (p *BGRA) RegionScroll(region image.Rectangle, amount int) {
 	}
 }
 
+func wrapCopy[E any](dst, src []E) {
+	for i := range len(dst) {
+		dst[i] = src[i]
+	}
+}
+
+func (p *BGRA) VectorScroll(region image.Rectangle, vector image.Point) {
+	region = p.Rect.Intersect(region)
+	if region.Empty() || vector == (image.Point{}) {
+		return
+	}
+
+	var dst, src int
+	if vector.Y > 0 {
+		if vector.X >= 0 {
+			// down and (possibly) to the right
+			// start at the top work our way down, start on the left, work our way right
+			for y := range region.Dy() {
+				for x := range region.Dx() {
+					dst = p.PixOffset(region.Min.X+x, region.Min.Y+y)
+
+					src = (region.Min.Y+((y+vector.Y+region.Dy())%region.Dy()))*p.Stride + (region.Min.X+((x+vector.X+region.Dx())%region.Dx()))*4
+					copy(p.Pix[dst:dst+4:dst+4], p.Pix[src:src+4:src+4])
+				}
+			}
+		} else {
+			for y := range region.Dy() {
+				for x := range region.Dx() {
+					x = region.Dx() - 1 - x
+					dst = p.PixOffset(region.Min.X+x, region.Min.Y+y)
+
+					src = (region.Min.Y+((y+vector.Y+region.Dy())%region.Dy()))*p.Stride + (region.Min.X+((x+vector.X+region.Dx())%region.Dx()))*4
+					copy(p.Pix[dst:dst+4:src+4], p.Pix[src:src+4:src+4])
+				}
+			}
+		}
+	} else {
+		if vector.X >= 0 {
+			// down and (possibly) to the right
+			// start at the top work our way down, start on the left, work our way right
+
+			for y := range region.Dy() {
+				y = region.Dy() - 1 - y
+				for x := range region.Dx() {
+					dst = p.PixOffset(region.Min.X+x, region.Min.Y+y)
+
+					src = (region.Min.Y+((y+vector.Y+region.Dy())%region.Dy()))*p.Stride + (region.Min.X+((x+vector.X+region.Dx())%region.Dx()))*4
+					copy(p.Pix[dst:dst+4:dst+4], p.Pix[src:src+4:src+4])
+				}
+			}
+		} else {
+			for y := range region.Dy() {
+				y = region.Dy() - 1 - y
+				for x := range region.Dx() {
+					x = region.Dx() - 1 - x
+					dst := p.PixOffset(region.Min.X+x, region.Min.Y+y)
+
+					src := (region.Min.Y+((y+vector.Y+region.Dy())%region.Dy()))*p.Stride + (region.Min.X+((x+vector.X+region.Dx())%region.Dx()))*4
+					copy(p.Pix[dst:dst+4:dst+4], p.Pix[src:src+4:src+4])
+				}
+			}
+		}
+	}
+}
+
 // Fill implements gfx.Filler. Whereever p overlaps with 'where', set those
 // pixels to color c.
 func (p *BGRA) Fill(where image.Rectangle, c color.Color) {
@@ -223,15 +290,16 @@ func (p *BGRA) Fill(where image.Rectangle, c color.Color) {
 		return
 	}
 
-	pixLine := make([]uint8, 4*where.Bounds().Dx())
-	for i := 0; i <= where.Bounds().Dx(); i++ {
-		copy(pixLine[i*4:], []uint8{nc.B, nc.G, nc.R, nc.A})
-	}
-
-	// first try a naïve for loop--we'll optimize later
+	// previously, I tried to be clever and used a maximum-run-length buffer and then
+	// copied that to the pix buffer and the below code is just as fast without
+	// thrashing memory as much. Go figure.
 	for y := where.Min.Y; y < where.Max.Y; y++ {
-		i := p.PixOffset(where.Bounds().Min.X, y)
-		copy(p.Pix[i:i+len(pixLine):i+len(pixLine)], pixLine)
+		for x := where.Min.X; x < where.Max.X; x++ {
+			pix := p.Pix[p.PixOffset(x, y) : p.PixOffset(x, y)+4 : p.PixOffset(x, y)+4]
+			pix[0] = nc.B
+			pix[1] = nc.G
+			pix[2] = nc.R
+		}
 	}
 }
 
