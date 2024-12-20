@@ -1,8 +1,8 @@
 package x11draw // import "github.com/sparques/go-x11draw"
 /*
-x11draw is a very simple way to get a draw.Draw interface the is displayed in an X11 window.
+x11draw is a very simple way to get a draw.Draw interface that is displayed in an X11 window.
 
-Its only dependency is CGO and X11--no need for OpenGL, SDL, or some complicated build tool chain.
+Its only dependency is CGO and X11 and xlib--no need for OpenGL, SDL, or some complicated build tool chain.
 
 Example below opens a window and then writes random colored pixels in random locations.
 
