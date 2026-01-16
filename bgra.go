@@ -225,7 +225,6 @@ func (p *BGRA) VectorScroll(region image.Rectangle, vector image.Point) {
 	if region.Empty() || vector == (image.Point{}) {
 		return
 	}
-
 	// The below is a bit verbose (could simplify it with a few if statements inside the for-loops).
 	// It is kept verbose for the sake of performance.
 
@@ -302,9 +301,10 @@ func (p *BGRA) Fill(where image.Rectangle, c color.Color) {
 	// previously, I tried to be clever and used a maximum-run-length buffer and then
 	// copied that to the pix buffer and the below code is just as fast without
 	// thrashing memory as much. Go figure.
+	var pix []uint8
 	for y := where.Min.Y; y < where.Max.Y; y++ {
 		for x := where.Min.X; x < where.Max.X; x++ {
-			pix := p.Pix[p.PixOffset(x, y) : p.PixOffset(x, y)+bgraWidth : p.PixOffset(x, y)+bgraWidth]
+			pix = p.Pix[p.PixOffset(x, y) : p.PixOffset(x, y)+bgraWidth : p.PixOffset(x, y)+bgraWidth]
 			pix[0] = nc.B
 			pix[1] = nc.G
 			pix[2] = nc.R
